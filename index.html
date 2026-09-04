@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Fleetline | Robot operations</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+    :root { --ink:#17211f; --muted:#71807b; --line:#dce5df; --paper:#f5f7f3; --panel:#fff; --green:#147d64; --mint:#dff3e9; --amber:#d58b26; --red:#c94d43; --blue:#4b78aa; }
+    * { box-sizing:border-box; }
+    body { margin:0; background:var(--paper); color:var(--ink); font-family:'Space Grotesk',sans-serif; }
+    button, input { font:inherit; }
+    .shell { max-width:1440px; margin:auto; padding:28px 34px 36px; }
+    header { display:flex; justify-content:space-between; align-items:flex-end; gap:24px; margin-bottom:28px; }
+    .eyebrow { color:var(--green); font:500 11px 'DM Mono',monospace; letter-spacing:.15em; text-transform:uppercase; margin-bottom:9px; }
+    h1 { font-size:clamp(28px,3vw,44px); letter-spacing:-.04em; line-height:1; margin:0; }
+    .subtitle { color:var(--muted); margin:10px 0 0; font-size:14px; }
+    .clock { display:flex; align-items:center; gap:10px; color:var(--muted); font:500 12px 'DM Mono',monospace; }
+    .pulse { width:8px; height:8px; background:#34b589; border-radius:50%; box-shadow:0 0 0 5px #d8f2e8; }
+    .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:12px; margin-bottom:16px; }
+    .metric { background:var(--panel); border:1px solid var(--line); padding:17px 19px; min-height:94px; }
+    .metric-label { color:var(--muted); text-transform:uppercase; letter-spacing:.1em; font:500 10px 'DM Mono',monospace; }
+    .metric-value { display:block; margin-top:8px; font-size:28px; font-weight:600; letter-spacing:-.04em; }
+    .workspace { display:grid; grid-template-columns:minmax(0,1.65fr) minmax(310px,.75fr); gap:16px; align-items:start; }
+    .map-column { display:grid; gap:16px; min-width:0; }
+    .panel { background:var(--panel); border:1px solid var(--line); }
+    .map-panel { min-width:0; }
+    .panel-head { padding:17px 20px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    h2 { font-size:15px; margin:0; letter-spacing:-.02em; }
+    .map-meta { color:var(--muted); font:11px 'DM Mono',monospace; }
+    .map-wrap { padding:14px; background:#eef2ed; }
+    svg { display:block; width:100%; height:auto; aspect-ratio:900 / 560; background:#fbfcfa; border:1px solid #c7d1cb; }
+    .grid { stroke:#dfe7e1; stroke-width:1; }
+    .obstacle { fill:#c4cbc6; stroke:#9eaaa3; stroke-width:1; }
+    .robot { cursor:pointer; transition:transform .15s; }
+    .robot:hover { filter:brightness(.9); }
+    .robot-ring { fill:#fff; stroke-width:3; }
+    .robot-dot { stroke:#fff; stroke-width:1.5; }
+    .robot-label { font:500 10px 'DM Mono',monospace; fill:#31403a; pointer-events:none; }
+    .map-foot { display:flex; justify-content:space-between; padding:12px 20px 14px; color:var(--muted); font:11px 'DM Mono',monospace; }
+    .legend { display:flex; gap:14px; flex-wrap:wrap; }
+    .legend span { display:inline-flex; align-items:center; gap:5px; }
+    .legend i { display:inline-block; width:7px; height:7px; border-radius:50%; background:currentColor; }
+    .side { display:grid; gap:16px; }
+    .filters { padding:17px 20px 19px; }
+    .filter-row { display:flex; gap:7px; flex-wrap:wrap; margin-top:13px; }
+    .filter { border:1px solid var(--line); background:#fff; color:var(--muted); border-radius:3px; padding:7px 10px; font-size:12px; cursor:pointer; }
+    .filter.active { color:var(--green); background:var(--mint); border-color:#b9e2d2; }
+    .detail { padding:19px 20px 21px; min-height:207px; }
+    .detail-empty { color:var(--muted); font-size:13px; line-height:1.6; }
+    .detail-top { display:flex; justify-content:space-between; align-items:start; margin-bottom:22px; }
+    .robot-name { font-size:25px; letter-spacing:-.04em; font-weight:600; }
+    .type { color:var(--muted); font:11px 'DM Mono',monospace; text-transform:uppercase; margin-top:4px; }
+    .status { border-radius:20px; padding:5px 8px; font:500 10px 'DM Mono',monospace; text-transform:uppercase; }
+    .status-idle { color:#607068; background:#edf1ee; }.status-active,.status-on_mission { color:#147d64; background:#dff3e9; }.status-error,.status-blocked { color:#b44038; background:#fae8e5; }.status-maintenance { color:#a46b13; background:#fff1d9; }.status-offline { color:#64719a; background:#e9ecf7; }
+    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+    .detail-label { color:var(--muted); font:10px 'DM Mono',monospace; text-transform:uppercase; }
+    .detail-value { display:block; margin-top:5px; font-size:16px; font-weight:500; }
+    .battery { height:6px; background:#e9eeea; margin-top:8px; border-radius:2px; overflow:hidden; }.battery > b { display:block; height:100%; background:var(--green); }
+    .events { padding-bottom:7px; }
+    .event-list { max-height:235px; overflow:auto; }
+    .event { display:grid; grid-template-columns:45px 1fr auto; gap:10px; align-items:center; padding:11px 20px; border-bottom:1px solid #edf1ee; font-size:12px; }
+    .event-time { color:var(--muted); font:11px 'DM Mono',monospace; }.event strong { font-weight:500; }.event small { color:var(--muted); display:block; margin-top:3px; font-size:10px; }.event .status { font-size:9px; }
+    .timeline { margin:0 20px 18px; padding-top:17px; border-top:1px solid var(--line); }
+    .trend { padding-bottom:14px; }
+    .trend svg { border:0; background:#fff; aspect-ratio:auto; height:116px; }
+    .trend-line { fill:none; stroke:var(--green); stroke-width:2.5; vector-effect:non-scaling-stroke; }
+    .trend-area { fill:#dff3e9; opacity:.7; }
+    .trend-label { fill:var(--muted); font:10px 'DM Mono',monospace; }
+    .timeline input { display:block; width:100%; accent-color:var(--green); cursor:pointer; }
+    .timeline-row { display:flex; justify-content:space-between; margin-top:7px; color:var(--muted); font:11px 'DM Mono',monospace; }
+    .controls { display:flex; align-items:center; gap:9px; }
+    .icon-btn { border:1px solid var(--line); background:#fff; width:31px; height:29px; cursor:pointer; color:var(--ink); }.icon-btn:hover { border-color:var(--green); color:var(--green); }
+    select { border:1px solid var(--line); background:#fff; color:var(--muted); padding:6px 8px; font-size:11px; }
+    @media (max-width:850px) { .shell { padding:22px 16px; } header { align-items:start; flex-direction:column; gap:14px; } .metrics { grid-template-columns:repeat(2,1fr); } .workspace { grid-template-columns:1fr; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><div class="eyebrow">Peppermint Robotics / Ops center</div><h1>Fleetline</h1><p class="subtitle">A calm view of every robot, every route, every exception.</p></div>
+      <div class="clock"><span class="pulse"></span><span id="connection">SIMULATION CONNECTED</span></div>
+    </header>
+    <section class="metrics" aria-label="Fleet summary">
+      <div class="metric"><span class="metric-label">Fleet size</span><strong class="metric-value" id="fleet-count">--</strong></div>
+      <div class="metric"><span class="metric-label">In motion</span><strong class="metric-value" id="motion-count">--</strong></div>
+      <div class="metric"><span class="metric-label">Needs attention</span><strong class="metric-value" id="attention-count">--</strong></div>
+      <div class="metric"><span class="metric-label">Avg. battery</span><strong class="metric-value" id="battery-average">--</strong></div>
+    </section>
+    <section class="workspace">
+      <div class="map-column">
+      <div class="panel map-panel">
+        <div class="panel-head"><h2 id="map-title">Replay / warehouse map</h2><span class="map-meta" id="sim-time">T+000s</span></div>
+        <div class="map-wrap"><svg id="map" viewBox="0 0 900 560" role="img" aria-label="Warehouse map showing robot positions">
+          <image href="layout.png" width="900" height="560" preserveAspectRatio="none"/>
+          <g id="robots"></g>
+        </svg></div>
+        <div class="map-foot"><div class="legend"><span style="color:#147d64"><i></i> active</span><span style="color:#71807b"><i></i> idle</span><span style="color:#c94d43"><i></i> attention</span></div><span>900 × 560 px / 1 px = 1 unit</span></div>
+        <div class="timeline"><input id="timeline" type="range" min="0" max="245" step="5" value="0" aria-label="Simulation time"><div class="timeline-row"><span id="time-label">00:00</span><div class="controls"><button class="icon-btn" id="play" aria-label="Play simulation">▶</button><button class="icon-btn" id="reset" aria-label="Reset simulation">↺</button><select id="speed" aria-label="Playback speed"><option value="1">1×</option><option value="2">2×</option><option value="4">4×</option></select></div><span id="end-time">04:05</span></div></div>
+      </div>
+      <div class="panel trend"><div class="panel-head"><h2>Fleet activity trend</h2><span class="map-meta">working robots / fleet</span></div><svg id="trend" viewBox="0 0 600 116" role="img" aria-label="Fleet activity trend over time"></svg></div>
+      </div>
+      <aside class="side">
+        <div class="panel filters"><div class="panel-head" style="padding:0 0 13px;border:0"><h2>Fleet filters</h2><span class="map-meta" id="visible-count">8 visible</span></div><div class="filter-row" id="filters"><button class="filter active" data-filter="all">All robots</button><button class="filter" data-filter="picker">Pickers</button><button class="filter" data-filter="hauler">Haulers</button><button class="filter" data-filter="attention">Attention</button></div><div class="filter-row"><button class="filter active" id="replay-mode">Replay log</button><button class="filter" id="live-mode">Live feed</button></div></div>
+        <div class="panel detail" id="detail"><div class="detail-empty">Select a robot on the map to inspect its current state, battery, and position.</div></div>
+        <div class="panel events"><div class="panel-head"><h2>Recent events</h2><span class="map-meta">telemetry log</span></div><div class="event-list" id="event-list"></div></div>
+      </aside>
+    </section>
+  </main>
+  <script>
+    const state = { robots: [], events: [], time: 0, filter: 'all', selected: null, playing: false, speed: 1, timer: null, mode: 'replay', liveEvents: [] };
+    const $ = (id) => document.getElementById(id);
+    const statusLabel = (value) => value.replace('_', ' ');
+    const colorFor = (status) => ['error','blocked'].includes(status) ? '#c94d43' : ['active','on_mission'].includes(status) ? '#147d64' : status === 'maintenance' ? '#d58b26' : status === 'offline' ? '#6573a4' : '#71807b';
+    function snapshotAt(time) { return state.robots.map(robot => { const updates = state.events.filter(event => event.robot_id === robot.robot_id && event.t <= time); return updates[updates.length - 1] || {...robot, status:'idle', battery:0}; }); }
+    function activityTrend() { const points = []; for (let time = 0; time <= state.events[state.events.length - 1].t; time += 10) { const snapshot = snapshotAt(time); points.push({ time, working: snapshot.filter(robot => ['active','on_mission'].includes(robot.status)).length / snapshot.length * 100 }); } return points; }
+    function renderTrend() { const points = activityTrend(); const x = time => 16 + time / points[points.length - 1].time * 568; const y = value => 100 - value * .82; const line = points.map(point => `${x(point.time)},${y(point.working)}`).join(' '); $('trend').innerHTML = `<path class="trend-area" d="M${x(0)},100 L${line.replaceAll(' ', ' L')} L584,100 Z"></path><polyline class="trend-line" points="${line}"></polyline><text class="trend-label" x="16" y="112">0%</text><text class="trend-label" x="566" y="112">${Math.round(points[points.length - 1].time / 60)}m</text><text class="trend-label" x="16" y="18">100%</text>`; }
+    function isAttention(robot) { return ['error','blocked','offline','maintenance'].includes(robot.status) || robot.battery < 25; }
+    function render() {
+      const snapshot = state.mode === 'live' ? state.liveEvents : snapshotAt(state.time); const visible = snapshot.filter(robot => state.filter === 'all' || state.filter === robot.robot_type || state.filter === 'attention' && isAttention(robot));
+      $('robots').innerHTML = visible.map(robot => `<g class="robot" data-id="${robot.robot_id}" transform="translate(${robot.x},${robot.y})"><circle class="robot-ring" r="10" stroke="${colorFor(robot.status)}" opacity=".28"></circle><circle class="robot-dot" r="6" fill="${colorFor(robot.status)}"></circle><text class="robot-label" x="13" y="4">${robot.robot_id}</text></g>`).join('');
+      $('fleet-count').textContent = snapshot.length; $('motion-count').textContent = snapshot.filter(robot => ['active','on_mission'].includes(robot.status)).length; $('attention-count').textContent = snapshot.filter(isAttention).length; $('battery-average').textContent = `${Math.round(snapshot.reduce((sum, robot) => sum + robot.battery, 0) / snapshot.length)}%`; $('visible-count').textContent = `${visible.length} visible`; $('sim-time').textContent = state.mode === 'live' ? 'LIVE / NOW' : `T+${String(state.time).padStart(3,'0')}s`; $('time-label').textContent = `${String(Math.floor(state.time / 60)).padStart(2,'0')}:${String(state.time % 60).padStart(2,'0')}`; $('map-title').textContent = state.mode === 'live' ? 'Live feed / warehouse map' : 'Replay / warehouse map';
+      document.querySelectorAll('.robot').forEach(robot => robot.addEventListener('click', () => { state.selected = robot.dataset.id; renderDetail(snapshot.find(item => item.robot_id === state.selected)); }));
+      renderEvents(snapshot); renderTrend(); if (state.selected) renderDetail(snapshot.find(item => item.robot_id === state.selected));
+    }
+    function renderDetail(robot) { if (!robot) return; $('detail').innerHTML = `<div class="detail-top"><div><div class="robot-name">${robot.robot_id}</div><div class="type">${robot.robot_type} unit</div></div><span class="status status-${robot.status}">${statusLabel(robot.status)}</span></div><div class="detail-grid"><div><span class="detail-label">Battery</span><strong class="detail-value">${robot.battery.toFixed(1)}%</strong><div class="battery"><b style="width:${robot.battery}%;background:${robot.battery < 25 ? '#c94d43' : '#147d64'}"></b></div></div><div><span class="detail-label">Position</span><strong class="detail-value">${robot.x.toFixed(1)}, ${robot.y.toFixed(1)}</strong></div></div>`; }
+    function renderEvents(snapshot) { const relevant = state.events.filter(event => event.t <= state.time && (event.status !== 'idle' || event.task_event)).slice(-7).reverse(); $('event-list').innerHTML = relevant.length ? relevant.map(event => `<div class="event"><span class="event-time">${String(event.t).padStart(3,'0')}s</span><div><strong>${event.robot_id}</strong><small>${event.task_event ? 'Task completed' : `Position ${event.x.toFixed(1)}, ${event.y.toFixed(1)}`}</small></div><span class="status status-${event.status}">${statusLabel(event.status)}</span></div>`).join('') : '<div class="detail-empty" style="padding:20px">No events at this point in the replay.</div>'; }
+    function setTime(time) { state.time = Number(time); $('timeline').value = state.time; render(); }
+    $('timeline').addEventListener('input', event => setTime(event.target.value)); $('play').addEventListener('click', () => { state.playing = !state.playing; $('play').textContent = state.playing ? 'Ⅱ' : '▶'; if (state.playing) state.timer = setInterval(() => { if (state.time >= state.events[state.events.length - 1].t) { state.playing = false; $('play').textContent = '▶'; clearInterval(state.timer); return; } setTime(state.time + 5); }, 700 / state.speed); else clearInterval(state.timer); }); $('reset').addEventListener('click', () => { clearInterval(state.timer); state.playing = false; $('play').textContent = '▶'; setTime(0); }); $('speed').addEventListener('change', event => { state.speed = Number(event.target.value); if (state.playing) { $('play').click(); $('play').click(); } });
+    $('live-mode').addEventListener('click', () => { state.mode = 'live'; state.playing = false; clearInterval(state.timer); $('replay-mode').classList.remove('active'); $('live-mode').classList.add('active'); state.liveEvents = snapshotAt(state.events[state.events.length - 1].t); render(); }); $('replay-mode').addEventListener('click', () => { state.mode = 'replay'; $('live-mode').classList.remove('active'); $('replay-mode').classList.add('active'); render(); });
+    document.querySelectorAll('.filter').forEach(button => button.addEventListener('click', () => { document.querySelectorAll('.filter').forEach(item => item.classList.remove('active')); button.classList.add('active'); state.filter = button.dataset.filter; render(); }));
+    fetch('robots.json').then(response => response.json()).then(robots => { state.robots = robots; return fetch('events.jsonl'); }).then(response => response.text()).then(text => { state.events = text.trim().split('\n').map(line => JSON.parse(line)); $('timeline').max = state.events[state.events.length - 1].t; $('end-time').textContent = `${String(Math.floor(state.events[state.events.length - 1].t / 60)).padStart(2,'0')}:${String(state.events[state.events.length - 1].t % 60).padStart(2,'0')}`; render(); setInterval(() => { if (state.mode !== 'live') return; state.liveEvents = state.liveEvents.map(robot => ({...robot, x: Math.max(10, Math.min(890, robot.x + (Math.random() - .5) * 8)), y: Math.max(10, Math.min(550, robot.y + (Math.random() - .5) * 8)), battery: Math.max(0, robot.battery - .03)})); renderLive(); }, 1200); }).catch(() => { $('connection').textContent = 'DATA SOURCE UNAVAILABLE'; $('connection').style.color = '#c94d43'; });
+    function renderLive() { const snapshot = state.liveEvents; const visible = snapshot.filter(robot => state.filter === 'all' || state.filter === robot.robot_type || state.filter === 'attention' && isAttention(robot)); $('robots').innerHTML = visible.map(robot => `<g class="robot" data-id="${robot.robot_id}" transform="translate(${robot.x},${robot.y})"><circle class="robot-ring" r="10" stroke="${colorFor(robot.status)}" opacity=".28"></circle><circle class="robot-dot" r="6" fill="${colorFor(robot.status)}"></circle><text class="robot-label" x="13" y="4">${robot.robot_id}</text></g>`).join(''); $('fleet-count').textContent = snapshot.length; $('motion-count').textContent = snapshot.filter(robot => ['active','on_mission'].includes(robot.status)).length; $('attention-count').textContent = snapshot.filter(isAttention).length; $('battery-average').textContent = `${Math.round(snapshot.reduce((sum, robot) => sum + robot.battery, 0) / snapshot.length)}%`; document.querySelectorAll('.robot').forEach(robot => robot.addEventListener('click', () => renderDetail(snapshot.find(item => item.robot_id === robot.dataset.id)))); }
+  </script>
+</body>
+</html>

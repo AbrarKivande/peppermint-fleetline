@@ -1,40 +1,65 @@
 # Fleetline
 
-Fleetline is a dependency-free frontend for replaying the supplied Peppermint Robotics fleet telemetry and simulating a browser-local live feed.
+Fleetline is a dependency-free robot fleet operations dashboard built for the Peppermint Robotics SDE-1 frontend challenge.
+
+**Live demo:** https://abrarkivande.github.io/peppermint-fleetline/
+
+The dashboard uses the supplied warehouse layout and telemetry files to provide a replayable fleet view, plus a separate browser-local live simulation for demonstrating continuously changing robot state.
+
+## Tech stack
+
+- Semantic HTML and accessible controls
+- Vanilla JavaScript using browser `fetch()` and SVG rendering
+- CSS with responsive layout and custom properties
+- No runtime dependencies, build step, or backend service
+- GitHub Actions and GitHub Pages for deployment
+
+## Features
+
+- Renders all eight robots on the supplied `layout.png` coordinate system.
+- Replays `events.jsonl` with play, pause, reset, seek, and 1x/2x/4x speed controls.
+- Switches to a continuous live feed with bounded movement and gradual battery drain.
+- Shows fleet size, working robots, attention count, and average battery.
+- Shows a fleet-level working-robot trend across the observed telemetry window.
+- Filters robots by type or operational attention state.
+- Shows selected robot status, battery, position, and recent telemetry events.
 
 ## Run locally
 
-From this directory, run any static server, for example:
+The browser must load the data files over HTTP, so use any static server from this directory:
 
 ```powershell
 npx serve .
 ```
 
-Then open the printed local URL. The dashboard loads `robots.json`, `events.jsonl`, and `layout.png` from the same directory. It can also be deployed as-is to GitHub Pages, Netlify, or any static host.
-
-## Included interactions
-
-- Replay, pause, reset, seek, and change playback speed.
-- Filter the map by robot type or attention state.
-- Select a robot to inspect status, battery, and position.
-- Review recent telemetry events as the replay advances.
-- Switch to a continuous live-feed simulation with bounded movement and gradual battery drain.
-- View the percentage of working robots over the observed window.
+Open the printed URL. The page loads `robots.json`, `events.jsonl`, and `layout.png` from the same directory.
 
 ## Tests
 
-Run the focused telemetry checks with Node:
+The focused Node test checks roster size, telemetry coverage, coordinate bounds, battery bounds, and attention-state preservation:
 
 ```powershell
 node tests.js
 ```
 
-## AI delegation
+Expected result:
 
-AI tooling was used to scaffold the initial dashboard layout, wire the telemetry parsing, and review the implementation against the challenge checklist. The final interaction model, live-feed behavior, written design answers, and tests were reviewed and adjusted in this repository.
+```text
+5 telemetry and snapshot tests passed
+```
 
 ## Deployment
 
-No build step or package installation is required. For GitHub Pages, push this folder to a repository, enable Pages from the repository's main branch and folder, and share the resulting Pages URL. The static site has no server-side dependencies; its live mode is intentionally generated in the browser.
+The site is deployed automatically by `.github/workflows/pages.yml` whenever `main` changes. The workflow uploads the repository as a static Pages artifact; no server-side process is required. GitHub Pages serves the live demo above.
 
-See `ANSWERS.md` and `SYSTEM_DESIGN.md` for the design decisions and tradeoffs.
+## Design notes
+
+`ANSWERS.md` explains the shared state shape, the browser-generated live-feed tradeoff, and the intentionally omitted production features. `SYSTEM_DESIGN.md` addresses future feature growth, larger fleets, limited bandwidth, robot failure, and unreliable connections.
+
+## AI delegation
+
+AI tooling was used to scaffold the initial dashboard layout, wire telemetry parsing, review the implementation against the challenge checklist, and draft documentation. The implementation, live-feed behavior, design decisions, written answers, and tests were reviewed and adjusted in this repository.
+
+## Scope and next steps
+
+This submission deliberately focuses on the requested frontend experience. A production version would add authenticated operator actions, durable history, server-authoritative live state, reconnect handling, stale-data indicators, and a virtualized rendering path for much larger fleets.
